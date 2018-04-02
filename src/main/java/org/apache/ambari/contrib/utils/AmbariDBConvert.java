@@ -1,23 +1,119 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.ambari.contrib.utils;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.cli.*;
+
 public class AmbariDBConvert {
 
-    static final String PSQL_URL = "jdbc:postgresql://node1.hortonworks.example.com:5432/ambari";
-    static final String MYSQL_URL = "jdbc:mariadb://node2.hortonworks.example.com:3306/ambari";
 
-    public static void main(String[] args) throws SQLException {
+    public static void main(String... argv) throws SQLException {
 
-        PostgresDB psql = new PostgresDB(PSQL_URL, "ambari", "bigdata");
-        MysqlDB mysql = new MysqlDB(MYSQL_URL, "ambari", "bigdata");
 
-        AmbariDBConvert converter = new AmbariDBConvert();
-        converter.convert(psql,mysql);
+        Options options = buildOptions();
+        Options help = new Options();
+        Option o = new Option("h", "help", false, "This screen");
+        o.setRequired(false);
+        help.addOption(o);
+        try {
+
+            CommandLine cmd = checkOptions(help, options, argv);
+
+            String psql_url = cmd.getOptionValue("p");
+            String msql_url = cmd.getOptionValue("m");
+            String username = cmd.getOptionValue("u");
+            String password = cmd.getOptionValue("P");
+            Class.forName("org.mariadb.jdbc.Driver");
+            Class.forName("org.postgresql.Driver");
+            MysqlDB mysql = new MysqlDB(msql_url,username, password);
+            PostgresDB psql = new PostgresDB(psql_url, username, password);
+
+            AmbariDBConvert converter = new AmbariDBConvert();
+            converter.convert(psql, mysql);
+
+        } catch(Exception e){
+            e.printStackTrace();
+            System.exit(-1);
+        }
 
     }
+
+    public static Options buildOptions(){
+
+        Options options = new Options();
+
+        Option o = new Option("p", "psql-url", true, "Postgres URL (e.g. jdbc:postgresql://postgres.host.example.com:5432/ambari");
+        o.setArgName("PSQL_URL");
+        o.setRequired(true);
+        options.addOption(o);
+
+        o = new Option("m", "mysql-url", true, "MySQL (MariaDB) URL (e.g. jdbc:mariadb://mysql.host.example.com:3306/ambari");
+        o.setArgName("MYSQL_URL");
+        o.setRequired(true);
+        options.addOption(o);
+
+        o = new Option("u", "username", true, "Database username (should be common for both databases)");
+        o.setArgName("USERNAME");
+        o.setRequired(true);
+        options.addOption(o);
+
+        o = new Option("P", "password", true, "Database password (should be common for both databases)");
+        o.setArgName("PASSWORD");
+        o.setRequired(true);
+        options.addOption(o);
+
+        return options;
+    }
+
+    public static CommandLine checkOptions(Options help, Options options, String ... argv) throws ParseException {
+
+        CommandLine cmd = null;
+        CommandLineParser parser = new DefaultParser();
+
+
+        try {
+
+            cmd = parser.parse(help,argv,true);
+
+            if( cmd.getOptions().length > 0){
+                final HelpFormatter usageFormatter = new HelpFormatter();
+                usageFormatter.printHelp("AmbariDBConvert", null, options, null, true);
+                System.exit(0);
+            }
+
+            cmd = parser.parse(options, argv);
+
+        } catch (ParseException e) {
+
+            final HelpFormatter usageFormatter = new HelpFormatter();
+            usageFormatter.printHelp("AmbariDBConvert", null, options, null, true);
+            throw e;
+
+        }
+
+
+        return cmd;
+    }
+
 
     private boolean convert(PostgresDB psql, MysqlDB mysql) throws SQLException {
 
