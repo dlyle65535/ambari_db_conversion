@@ -29,9 +29,7 @@ public class MysqlDB {
     public MysqlDB(String url, String user, String password) {
         try {
             conn = DriverManager.getConnection(url, user, password);
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate("SET FOREIGN_KEY_CHECKS=0");
-            stmt.close();
+
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException("Unable to create database connection " + url);
@@ -54,7 +52,7 @@ public class MysqlDB {
                 sb.append(")");
             }
         }
-        sb.append(" values (");
+        sb.append(" VALUES (");
         for(int i = 0 ; i<columnNames.size(); i++){
             sb.append("?");
             if(i<columnNames.size() -1){
@@ -67,7 +65,7 @@ public class MysqlDB {
         return conn.prepareStatement(sb.toString());
     }
 
-    private String normalizeTablename(String tablename){
+    protected static String normalizeTablename(String tablename){
         String ret = tablename;
         if(tablename.startsWith("qrtz")){
             ret = tablename.toUpperCase();
@@ -76,5 +74,16 @@ public class MysqlDB {
             ret = "ClusterHostMapping";
         }
         return ret;
+    }
+
+
+    public void enableConstraints() throws SQLException {
+        Statement stmt = conn.createStatement();
+        stmt.executeUpdate("SET FOREIGN_KEY_CHECKS=1");
+    }
+
+    public void disableConstraints() throws SQLException {
+        Statement stmt = conn.createStatement();
+        stmt.executeUpdate("SET FOREIGN_KEY_CHECKS=0");
     }
 }
