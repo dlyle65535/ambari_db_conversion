@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +21,7 @@ import java.sql.*;
 import java.util.List;
 
 public class MysqlDB {
-    private Connection conn =  null;
+    private Connection conn = null;
 
     private MysqlDB() {
     }
@@ -36,7 +36,7 @@ public class MysqlDB {
         }
     }
 
-    public void deleteFromTable(String tablename) throws SQLException{
+    public void deleteFromTable(String tablename) throws SQLException {
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("TRUNCATE TABLE " + normalizeTablename(tablename));
     }
@@ -44,20 +44,20 @@ public class MysqlDB {
     public PreparedStatement buildInsertStatement(String tablename, List<String> columnNames) throws SQLException {
         StringBuilder sb = new StringBuilder();
         sb.append("INSERT INTO " + normalizeTablename(tablename) + "(");
-        for(int i = 0 ; i<columnNames.size(); i++){
+        for (int i = 0; i < columnNames.size(); i++) {
             sb.append("`");
             sb.append(columnNames.get(i));
             sb.append("`");
-            if(i<columnNames.size() -1){
+            if (i < columnNames.size() - 1) {
                 sb.append(", ");
             } else {
                 sb.append(")");
             }
         }
         sb.append(" VALUES (");
-        for(int i = 0 ; i<columnNames.size(); i++){
+        for (int i = 0; i < columnNames.size(); i++) {
             sb.append("?");
-            if(i<columnNames.size() -1){
+            if (i < columnNames.size() - 1) {
                 sb.append(", ");
             } else {
                 sb.append(")");
@@ -67,12 +67,12 @@ public class MysqlDB {
         return conn.prepareStatement(sb.toString());
     }
 
-    protected static String normalizeTablename(String tablename){
+    protected static String normalizeTablename(String tablename) {
         String ret = tablename;
-        if(tablename.startsWith("qrtz")){
+        if (tablename.startsWith("qrtz")) {
             ret = tablename.toUpperCase();
         }
-        if(tablename.equals("clusterhostmapping")){
+        if (tablename.equals("clusterhostmapping")) {
             ret = "ClusterHostMapping";
         }
         return ret;
