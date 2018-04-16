@@ -45,7 +45,9 @@ public class MysqlDB {
         StringBuilder sb = new StringBuilder();
         sb.append("INSERT INTO " + normalizeTablename(tablename) + "(");
         for(int i = 0 ; i<columnNames.size(); i++){
+            sb.append("`");
             sb.append(columnNames.get(i));
+            sb.append("`");
             if(i<columnNames.size() -1){
                 sb.append(", ");
             } else {

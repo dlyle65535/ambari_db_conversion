@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.cli.*;
+import org.apache.commons.lang3.StringEscapeUtils;
 
 public class AmbariDBConvert {
 
@@ -115,18 +116,16 @@ public class AmbariDBConvert {
     }
 
 
-    private boolean convert(PostgresDB psql, MysqlDB mysql) throws SQLException {
+    protected boolean convert(PostgresDB psql, MysqlDB mysql)  {
 
         //TODO: Dump database and start again
+        try {
+            mysql.disableConstraints();
 
         List<String> tables = psql.getTables();
 
         for (String table : tables){
-            if(table.equals("key_value_store")){
-                System.out.println("Skipping key_value_store");
-                continue;
-            }
-            System.out.println("Deleteing from table: " + table);
+            System.out.println("Deleting from table: " + table);
             mysql.deleteFromTable(table);
             System.out.println("Getting rows from table: " + table);
             ResultSet rows = psql.getRows(table);
@@ -136,67 +135,77 @@ public class AmbariDBConvert {
             while(rows.next()) {
                 for (int i = 1; i < numCols + 1; i++) {
 
-                    switch(md.getColumnType(i)){
-
-                        case -7: //bit
-                            ps.setBoolean(i,rows.getBoolean(i));
-                            break;
-                        case -6: //TINYINT
-                            ps.setByte(i,rows.getByte(i));
-                            break;
-                        case -5: //BIGINT
-                            ps.setLong(i,rows.getLong(i));
-                            break;
-                        case -4://LONGVARBINARY
-                        case -3://VARBINARY
-                        case -2://BINARY
-                            ps.setBytes(i,rows.getBytes(i));
-                            break;
-                        case    -1://LONGVARCHAR
-                        case 1://CHAR
-                            ps.setString(i,rows.getString(i));
-                            break;
-                        case 0://NULL
-                            ps.setNull(i,Types.NULL);
-                            break;
-                        case 2://NUMERIC
-                        case 3://DECIMAL
-                            ps.setBigDecimal(i,rows.getBigDecimal(i));
-                            break;
-                        case 4://INTEGER
-                            ps.setInt(i,rows.getInt(i));
-                            break;
-                        case 5://SMALLINT
-                            ps.setShort(i,rows.getShort(i));
-                            break;
-                        case 6://FLOAT
-                        case 7://REAL
-                            ps.setFloat(i,rows.getFloat(i));
-                            break;
-                        case 8://DOUBLE
-                            ps.setDouble(i,rows.getDouble(i));
-                            break;
-                        case 12://VARCHAR
-                            ps.setString(i,rows.getString(i));
-                            break;
-                        case 91://DATE
-                            ps.setDate(i,rows.getDate(i));
-                            break;
-                        case 92://TIME
-                            ps.setTime(i,rows.getTime(i));
-                            break;
-                        case 93: //TIMESTAMP
-                            ps.setTimestamp(i,rows.getTimestamp(i));
-                            break;
-                        case 1111: //OTHER
-                            throw new RuntimeException("Unable to map custom dataype from " + md.getColumnName(i) + " in table: " + table);
-                    }
+                    mapRowData(rows, ps, i);
 
                 }
+                try {
                     ps.executeUpdate();
-                          }
+                } catch (SQLException e){
+                   e.printStackTrace();
+                }
+            }
+        }
+        mysql.enableConstraints();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return true;
+    }
+
+    private void mapRowData(ResultSet rows, PreparedStatement ps, int colNum) throws SQLException {
+        switch(rows.getMetaData().getColumnType(colNum)){
+
+            case -7: //bit
+                ps.setBoolean(colNum,rows.getBoolean(colNum));
+                break;
+            case -6: //TINYINT
+                ps.setByte(colNum,rows.getByte(colNum));
+                break;
+            case -5: //BIGINT
+                ps.setLong(colNum,rows.getLong(colNum));
+                break;
+            case -4://LONGVARBINARY
+            case -3://VARBINARY
+            case -2://BINARY
+                ps.setBytes(colNum,rows.getBytes(colNum));
+                break;
+            case 0://NULL
+                ps.setNull(colNum,Types.NULL);
+                break;
+            case 2://NUMERIC
+            case 3://DECIMAL
+                ps.setBigDecimal(colNum,rows.getBigDecimal(colNum));
+                break;
+            case 4://INTEGER
+                ps.setInt(colNum,rows.getInt(colNum));
+                break;
+            case 5://SMALLINT
+                ps.setShort(colNum,rows.getShort(colNum));
+                break;
+            case 6://FLOAT
+            case 7://REAL
+                ps.setFloat(colNum,rows.getFloat(colNum));
+                break;
+            case 8://DOUBLE
+                ps.setDouble(colNum,rows.getDouble(colNum));
+                break;
+            case -1://LONGVARCHAR
+            case 1://CHAR
+            case 12://VARCHAR
+                ps.setString(colNum,rows.getString(colNum));
+                break;
+            case 91://DATE
+                ps.setDate(colNum,rows.getDate(colNum));
+                break;
+            case 92://TIME
+                ps.setTime(colNum,rows.getTime(colNum));
+                break;
+            case 93: //TIMESTAMP
+                ps.setTimestamp(colNum,rows.getTimestamp(colNum));
+                break;
+            case 1111: //OTHER
+                throw new RuntimeException("Unable to map custom datatype from " + rows.getMetaData().getColumnName(colNum) + " in table: " + rows.getMetaData().getTableName(colNum));
+        }
     }
 
     private List<String> getColumnNames(ResultSetMetaData md) throws SQLException {

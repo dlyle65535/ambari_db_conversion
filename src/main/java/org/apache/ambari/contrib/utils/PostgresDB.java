@@ -29,6 +29,7 @@ public class PostgresDB {
     private Statement stmt = null;
     private Map<String,Long> rowCounts = new HashMap<>();
     private PostgresDB(){};
+    protected static final String[] TABLE_TYPES = {"TABLE"};
 
     public PostgresDB(String url, String user, String password) {
         try {
@@ -45,15 +46,11 @@ public class PostgresDB {
         try {
             DatabaseMetaData md = conn.getMetaData();
             String[] types = new String[]{"TABLE"};
-            ResultSet rs = md.getTables(null, null, "%", types);
-            for(int i=1; i< rs.getMetaData().getColumnCount()+1; i++){
-                System.out.print(rs.getMetaData().getColumnName(i) + " ");
-            }
+            ResultSet rs = md.getTables(null, null, "%", TABLE_TYPES);
             while(rs.next()){
                 Object column = rs.getObject(3);
                 ret.add(column.toString());
             }
-            rs.close();
         } catch (SQLException e){
             e.printStackTrace();
         }
