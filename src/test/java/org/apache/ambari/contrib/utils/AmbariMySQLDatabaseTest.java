@@ -35,70 +35,25 @@ import static org.powermock.api.easymock.PowerMock.createMock;
 import static org.powermock.api.easymock.PowerMock.replay;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({DriverManager.class, MysqlDB.class})
-public class MysqlDBTest {
+@PrepareForTest({DriverManager.class, AmbariDatabase.class})
+public class AmbariMySQLDatabaseTest {
 
     Connection mockConnection = null;
     Statement mockStatement = null;
     ResultSet mockResultSet = null;
-
+    DatabaseMetaData mockDBMetadata = null;
 
     @Before
     public void setUp() throws Exception {
         mockConnection = createMock(Connection.class);
         mockStatement = createMock(Statement.class);
         mockResultSet = createMock(ResultSet.class);
+        mockDBMetadata = createMock(DatabaseMetaData.class);
+        DatabaseMetaData mockDBMetadata = null;
         PowerMock.mockStatic(DriverManager.class);
     }
 
 
-    @Test
-    public void deleteFromTable() throws SQLException {
-        expect(DriverManager.getConnection(anyObject(String.class), anyObject(String.class), anyObject(String.class))).andReturn(
-                mockConnection);
-        expect(mockConnection.createStatement()).andReturn(mockStatement)
-                .atLeastOnce();
-        expect(mockStatement.executeUpdate("TRUNCATE TABLE " + "tablename")).andReturn(1).once();
-
-        replay(DriverManager.class);
-        replay(mockConnection);
-        replay(mockStatement);
-
-
-        MysqlDB oot = new MysqlDB("foo", "bar", "baz");
-        oot.deleteFromTable("tablename");
-
-    }
-
-    @Test
-    public void normalizeTableNames() {
-
-        assertEquals("qrtz tables should be capitalized", "QRTZ_TABLE_NAME", MysqlDB.normalizeTablename("qrtz_table_name"));
-        assertEquals("clusterhostmapping should be CamelCased", "ClusterHostMapping", MysqlDB.normalizeTablename("clusterhostmapping"));
-
-    }
-
-    @Test
-    public void buildInsertStatement() throws SQLException {
-        expect(DriverManager.getConnection(anyObject(String.class), anyObject(String.class), anyObject(String.class))).andReturn(
-                mockConnection);
-        expect(mockConnection.createStatement()).andReturn(mockStatement)
-                .atLeastOnce();
-        expect(mockConnection.prepareStatement("INSERT INTO tablename(`first`, `second`, `third`) VALUES (?, ?, ?)")).andReturn(null).once();
-
-        replay(DriverManager.class);
-        replay(mockConnection);
-        replay(mockStatement);
-
-        MysqlDB oot = new MysqlDB("foo", "bar", "baz");
-        PreparedStatement ps = oot.buildInsertStatement("tablename", new ArrayList<String>() {{
-            add("first");
-            add("second");
-            add("third");
-        }});
-
-
-    }
 
     @Test
     public void enableConstraints() throws SQLException {
@@ -112,7 +67,7 @@ public class MysqlDBTest {
         replay(mockConnection);
         replay(mockStatement);
 
-        MysqlDB oot = new MysqlDB("foo", "bar", "baz");
+        AmbariMySQLDatabase oot = new AmbariMySQLDatabase("foo", "bar", "baz");
         oot.enableConstraints();
 
     }
@@ -129,7 +84,9 @@ public class MysqlDBTest {
         replay(mockConnection);
         replay(mockStatement);
 
-        MysqlDB oot = new MysqlDB("foo", "bar", "baz");
+        AmbariMySQLDatabase oot = new AmbariMySQLDatabase("foo", "bar", "baz");
         oot.disableConstraints();
     }
+
+
 }

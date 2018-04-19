@@ -21,7 +21,9 @@ import org.apache.commons.cli.*;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AmbariDBConvert {
 
@@ -44,8 +46,8 @@ public class AmbariDBConvert {
             String password = cmd.getOptionValue("P");
             Class.forName("org.mariadb.jdbc.Driver");
             Class.forName("org.postgresql.Driver");
-            MysqlDB mysql = new MysqlDB(msql_url, username, password);
-            PostgresDB psql = new PostgresDB(psql_url, username, password);
+            AmbariDatabase mysql = new AmbariMySQLDatabase(msql_url, username, password);
+            AmbariDatabase psql = new AmbariDatabase(psql_url, username, password);
 
             AmbariDBConvert converter = new AmbariDBConvert();
             converter.convert(psql, mysql);
@@ -114,16 +116,19 @@ public class AmbariDBConvert {
         return cmd;
     }
 
-
-    protected boolean convert(PostgresDB psql, MysqlDB mysql) {
+    protected boolean convert(AmbariDatabase psql, AmbariDatabase mysql) {
 
         //TODO: Dump database and start again
         try {
-            mysql.disableConstraints();
+
+            if(mysql instanceof AmbariMySQLDatabase) {
+                ((AmbariMySQLDatabase) mysql).disableConstraints();
+            }
 
             List<String> tables = psql.getTables();
-
+            Integer tableCount = 0;
             for (String table : tables) {
+                tableCount++;
                 System.out.println("Deleting from table: " + table);
                 mysql.deleteFromTable(table);
                 System.out.println("Getting rows from table: " + table);
@@ -144,7 +149,11 @@ public class AmbariDBConvert {
                     }
                 }
             }
-            mysql.enableConstraints();
+            System.out.println("Copied " + tableCount + " tables.");
+            if(mysql instanceof AmbariMySQLDatabase) {
+                ((AmbariMySQLDatabase) mysql).enableConstraints();
+            }
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -152,58 +161,64 @@ public class AmbariDBConvert {
     }
 
     private void mapRowData(ResultSet rows, PreparedStatement ps, int colNum) throws SQLException {
-        switch (rows.getMetaData().getColumnType(colNum)) {
 
-            case -7: //bit
-                ps.setBoolean(colNum, rows.getBoolean(colNum));
-                break;
-            case -6: //TINYINT
-                ps.setByte(colNum, rows.getByte(colNum));
-                break;
-            case -5: //BIGINT
-                ps.setLong(colNum, rows.getLong(colNum));
-                break;
-            case -4://LONGVARBINARY
-            case -3://VARBINARY
-            case -2://BINARY
-                ps.setBytes(colNum, rows.getBytes(colNum));
-                break;
-            case 0://NULL
-                ps.setNull(colNum, Types.NULL);
-                break;
-            case 2://NUMERIC
-            case 3://DECIMAL
-                ps.setBigDecimal(colNum, rows.getBigDecimal(colNum));
-                break;
-            case 4://INTEGER
-                ps.setInt(colNum, rows.getInt(colNum));
-                break;
-            case 5://SMALLINT
-                ps.setShort(colNum, rows.getShort(colNum));
-                break;
-            case 6://FLOAT
-            case 7://REAL
-                ps.setFloat(colNum, rows.getFloat(colNum));
-                break;
-            case 8://DOUBLE
-                ps.setDouble(colNum, rows.getDouble(colNum));
-                break;
-            case -1://LONGVARCHAR
-            case 1://CHAR
-            case 12://VARCHAR
-                ps.setString(colNum, rows.getString(colNum));
-                break;
-            case 91://DATE
-                ps.setDate(colNum, rows.getDate(colNum));
-                break;
-            case 92://TIME
-                ps.setTime(colNum, rows.getTime(colNum));
-                break;
-            case 93: //TIMESTAMP
-                ps.setTimestamp(colNum, rows.getTimestamp(colNum));
-                break;
-            case 1111: //OTHER
-                throw new RuntimeException("Unable to map custom datatype from " + rows.getMetaData().getColumnName(colNum) + " in table: " + rows.getMetaData().getTableName(colNum));
+        if (rows.getObject(colNum) == null){
+            ps.setNull(colNum,rows.getType());
+        } else {
+
+            switch (rows.getMetaData().getColumnType(colNum)) {
+
+                case -7: //bit
+                    ps.setBoolean(colNum, rows.getBoolean(colNum));
+                    break;
+                case -6: //TINYINT
+                    ps.setByte(colNum, rows.getByte(colNum));
+                    break;
+                case -5: //BIGINT
+                    ps.setLong(colNum, rows.getLong(colNum));
+                    break;
+                case -4://LONGVARBINARY
+                case -3://VARBINARY
+                case -2://BINARY
+                    ps.setBytes(colNum, rows.getBytes(colNum));
+                    break;
+                case 0://NULL
+                    ps.setNull(colNum, Types.NULL);
+                    break;
+                case 2://NUMERIC
+                case 3://DECIMAL
+                    ps.setBigDecimal(colNum, rows.getBigDecimal(colNum));
+                    break;
+                case 4://INTEGER
+                    ps.setInt(colNum, rows.getInt(colNum));
+                    break;
+                case 5://SMALLINT
+                    ps.setShort(colNum, rows.getShort(colNum));
+                    break;
+                case 6://FLOAT
+                case 7://REAL
+                    ps.setFloat(colNum, rows.getFloat(colNum));
+                    break;
+                case 8://DOUBLE
+                    ps.setDouble(colNum, rows.getDouble(colNum));
+                    break;
+                case -1://LONGVARCHAR
+                case 1://CHAR
+                case 12://VARCHAR
+                    ps.setString(colNum, rows.getString(colNum));
+                    break;
+                case 91://DATE
+                    ps.setDate(colNum, rows.getDate(colNum));
+                    break;
+                case 92://TIME
+                    ps.setTime(colNum, rows.getTime(colNum));
+                    break;
+                case 93: //TIMESTAMP
+                    ps.setTimestamp(colNum, rows.getTimestamp(colNum));
+                    break;
+                case 1111: //OTHER
+                    throw new RuntimeException("Unable to map custom datatype from " + rows.getMetaData().getColumnName(colNum) + " in table: " + rows.getMetaData().getTableName(colNum));
+            }
         }
     }
 

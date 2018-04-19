@@ -18,18 +18,21 @@
 package org.apache.ambari.contrib.utils;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
 
-public class MysqlDB {
-    private Connection conn = null;
+public class AmbariDatabase {
+    protected Connection conn = null;
+    protected Statement stmt = null;
+    protected static final String[] TABLE_TYPES = {"TABLE"};
 
-    private MysqlDB() {
+    private AmbariDatabase() {
     }
 
-    public MysqlDB(String url, String user, String password) {
+    public AmbariDatabase(String url, String user, String password) {
         try {
             conn = DriverManager.getConnection(url, user, password);
-
+            stmt = conn.createStatement();
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException("Unable to create database connection " + url);
@@ -79,13 +82,31 @@ public class MysqlDB {
     }
 
 
-    public void enableConstraints() throws SQLException {
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate("SET FOREIGN_KEY_CHECKS=1");
+    List<String> getTables() {
+        List<String> ret = new ArrayList<>();
+        try {
+            DatabaseMetaData md = conn.getMetaData();
+            String[] types = new String[]{"TABLE"};
+            ResultSet rs = md.getTables(null, null, "%", TABLE_TYPES);
+            while (rs.next()) {
+                Object column = rs.getObject(3);
+                ret.add(column.toString());
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ret;
     }
 
-    public void disableConstraints() throws SQLException {
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate("SET FOREIGN_KEY_CHECKS=0");
+
+    ResultSet getRows(String tablename) {
+        ResultSet rs = null;
+        try {
+            rs = stmt.executeQuery("SELECT * FROM " + tablename + ";");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return rs;
     }
+
 }
