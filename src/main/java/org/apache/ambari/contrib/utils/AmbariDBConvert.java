@@ -118,7 +118,6 @@ public class AmbariDBConvert {
 
     protected boolean convert(AmbariDatabase sourceDB, AmbariDatabase destDB) {
 
-        //TODO: Drop database and start again
         try {
 
 
@@ -127,30 +126,38 @@ public class AmbariDBConvert {
             }
 
             List<String> tables = sourceDB.getTables();
+            List<String> destTables = destDB.getTables();
             Integer tableCount = 0;
+            Integer skipCount = 0;
             for (String table : tables) {
-                tableCount++;
-                System.out.println("Deleting from table: " + table);
-                destDB.deleteFromTable(table);
-                System.out.println("Getting rows from table: " + table);
-                ResultSet rows = sourceDB.getRows(table);
-                ResultSetMetaData md = rows.getMetaData();
-                int numCols = md.getColumnCount();
-                PreparedStatement ps = destDB.buildInsertStatement(table, getColumnNames(md));
-                while (rows.next()) {
-                    for (int i = 1; i < numCols + 1; i++) {
+                if(destTables.contains(AmbariDatabase.normalizeTablename(table))) {
+                    tableCount++;
+                    System.out.println("Deleting from table: " + table);
+                    destDB.deleteFromTable(table);
+                    System.out.println("Getting rows from table: " + table);
+                    ResultSet rows = sourceDB.getRows(table);
+                    ResultSetMetaData md = rows.getMetaData();
+                    int numCols = md.getColumnCount();
+                    PreparedStatement ps = destDB.buildInsertStatement(table, getColumnNames(md));
+                    while (rows.next()) {
+                        for (int i = 1; i < numCols + 1; i++) {
 
-                        ps.setObject(i,rows.getObject(i));
+                            ps.setObject(i, rows.getObject(i));
 
+                        }
+                        try {
+                            ps.executeUpdate();
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
                     }
-                    try {
-                        ps.executeUpdate();
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                    }
+                } else {
+                    System.out.println("Table: " + table + " does not exist in MySQL - SKIPPING");
+                    skipCount++;
                 }
             }
             System.out.println("Copied " + tableCount + " tables.");
+            System.out.println("Skipped " + skipCount + " tables.");
             if(destDB instanceof AmbariMySQLDatabase) {
                 ((AmbariMySQLDatabase) destDB).enableConstraints();
             }

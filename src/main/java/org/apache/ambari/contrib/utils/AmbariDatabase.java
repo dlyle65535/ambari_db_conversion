@@ -44,7 +44,7 @@ public class AmbariDatabase {
         stmt.executeUpdate("TRUNCATE TABLE " + normalizeTablename(tablename));
     }
 
-    
+
     public PreparedStatement buildInsertStatement(String tablename, List<String> columnNames) throws SQLException {
         StringBuilder sb = new StringBuilder();
         sb.append("INSERT INTO " + normalizeTablename(tablename) + "(");
